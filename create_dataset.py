@@ -18,7 +18,7 @@ def add_options():
 
 def smiles_to_sample(smiles, label):
   nodes = list()
-  pos = list()
+  positions = list()
   edges = list()
   molecule = Chem.MolFromSmiles(smiles)
   atom_num = len(molecule.GetAtoms())
@@ -28,13 +28,13 @@ def smiles_to_sample(smiles, label):
     idx = atom.GetIdx()
     position = molecule.GetConformer().GetAtomPosition(idx)
     nodes.append(atom.GetAtomicNum())
-    pos.append((position.x, position.y, position.z))
+    positions.append((position.x, position.y, position.z))
     for neighbor_atom in atom.GetNeighbors():
       neighbor_idx = neighbor_atom.GetIdx()
       bond = molecule.GetBondBetweenAtoms(idx, neighbor_idx)
       edges.append((idx, neighbor_idx, bond.GetBondType()))
   nodes = tf.stack(nodes, axis = 0) # nodes.shape = (node_num,)
-  pos = tf.stack(pos, axis = 0) # pos.shape = (node_num, 3)
+  positions = tf.stack(positions, axis = 0) # pos.shape = (node_num, 3)
   edges = tf.stack(edges, axis = 0) # edges.shape = (edge_num, 3)
   graph = tfgnn.GraphTensor.from_piece(
     node_sets = {
@@ -42,7 +42,7 @@ def smiles_to_sample(smiles, label):
         sizes = tf.constant([nodes.shape[0]]),
         features = {
           tfgnn.HIDDEN_STATE: tf.one_hot(nodes, 118),
-          "position": pos
+          "position": positions
         }
       )
     },
