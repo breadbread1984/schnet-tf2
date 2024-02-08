@@ -16,7 +16,7 @@ def add_options():
   flags.DEFINE_string('input_csv', default = None, help = 'path to polymer dataset csv')
   flags.DEFINE_string('output_dir', default = 'dataset', help = 'path to output directory')
 
-def smiles_to_sample(smiles, label):
+def smiles_to_sample(smiles, label, cutoff = 20, gap = 0.1):
   nodes = list()
   positions = list()
   edges = list()
@@ -49,12 +49,12 @@ def smiles_to_sample(smiles, label):
     edge_sets = {
       "bond": tfgnn.EdgeSet.from_fields(
         sizes = tf.constant([edges.shape[0]]),
-        adjacency = tfgnn.Adjacency.from_indices(
           source = ("atom", edges[:,0]),
           target = ("atom", edges[:,1])
         ),
         features = {
-          tfgnn.HIDDEN_STATE: tf.one_hot(edges[:,2], 22)
+          tfgnn.HIDDEN_STATE: tf.one_hot(edges[:,2], 22),
+          'rbf': tf.zeros((edges.shape[0], int(tf.math.ceil(cutoff / gap)))
         }
       )
     },
@@ -66,7 +66,7 @@ def smiles_to_sample(smiles, label):
   )
   return graph
 
-def graph_tensor_spec():
+def graph_tensor_spec(cutoff = 20, gap = 0.1):
   spec = tfgnn.GraphTensorSpec.from_piece_specs(
       node_sets_spec = {
         "atom": tfgnn.NodeSetSpec.from_field_specs(
@@ -81,7 +81,7 @@ def graph_tensor_spec():
         "bond": tfgnn.EdgeSetSpec.from_field_specs(
           features_spec = {
             tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 22), tf.float32),
-            'rbf': tf.TensorSpec((None, None), dtype = tf.float32)
+            'rbf': tf.TensorSpec((None, int(tf.math.ceil(cutoff / gap)), dtype = tf.float32)
           },
           sizes_spec = tf.TensorSpec((1,), tf.int32),
           adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
