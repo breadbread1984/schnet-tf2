@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 import tensorflow_gnn as tfgnn
-from create_dataset import graph_tensor_spec
+from create_dataset import graph_tensor_spec, prop_names
 
 shifted_softplus = lambda x: tf.where(x < 14., tf.math.softplus(tf.where(x < 14., x, tf.zeros_like(x))), x) - tf.math.log(2.)
 
@@ -104,5 +104,5 @@ def SchNet(channels = 256, layer_num = 4):
     )(graph)
   resutls = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(graph)
   results = tf.keras.layers.Dense(channels // 2, activation = shifted_softplus)(results) # results.shape = (batch, channels // 2)
-  results = tf.keras.layers.Dense(1)(results) # results.shape = (batch, 1)
+  results = tf.keras.layers.Dense(len(prop_names))(results) # results.shape = (batch, len(prop_names))
   return tf.keras.Model(inputs = inputs, outputs = results)
