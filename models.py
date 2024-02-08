@@ -15,7 +15,7 @@ class FilterNet(tf.keras.layers.Layer):
     sender_positions = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_name = "position") # sender_position.shape = (edge_num, 3)
     receiver_positions = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_name = "position") # recevier_position.shape = (edge_num, 3)
     offsets = tfgnn.keras.layers.Readout(edge_set_name = 'bond', feature_name = 'offset')(graph) # offsets.shape = (edge_num, 3)
-    dists = tf.math.sqrt(tf.math.reduce_sum((sender_positinos - (receiver_positions + offset)) ** 2, axis = -1, keepdims = True)) # dists.shape = (edge_num, 1)
+    dists = tf.math.sqrt(tf.math.reduce_sum((sender_positinos - (receiver_positions + offsets)) ** 2, axis = -1, keepdims = True)) # dists.shape = (edge_num, 1)
     centers = tf.expand_dims(tf.linspace(0., self.cutoff, int(tf.math.ceil(self.cutoff / self.gap))), axis = 0) # centers.shape = (1, center_num)
     dists = dists - centers # dists.shape = (edge_num, center_num)
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
