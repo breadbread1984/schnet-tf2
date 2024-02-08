@@ -24,7 +24,7 @@ def smiles_to_sample(smiles, label):
   atom_num = len(molecule.GetAtoms())
   AllChem.EmbedMolecule(molecule)
   AllChem.UFFOptimizeMolecule(molecule)
-  for atom in molecule.GetAtoms()
+  for atom in molecule.GetAtoms():
     idx = atom.GetIdx()
     position = molecule.GetConformer().GetAtomPosition(idx)
     nodes.append(atom.GetAtomicNum())
@@ -71,7 +71,7 @@ def graph_tensor_spec():
       node_sets_spec = {
         "atom": tfgnn.NodeSetSpec.from_field_specs(
           features_spec = {
-            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 118), tf.float32)
+            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 118), tf.float32),
             "position": tf.TensorSpec((None, 3), tf.float32)
           },
           sizes_spec = tf.TensorSpec((1,), tf.int32)

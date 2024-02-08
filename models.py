@@ -30,12 +30,13 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     centers = tf.expand_dims(tf.linspace(0., self.cutoff, int(tf.math.ceil(self.cutoff / self.gap))), axis = 0) # centers.shape = (1, center_num)
     dists = dists - centers # dists.shape = (edge_num, center_num)
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
+
     results = self.shifted_softplus(tf.linalg.matmul(rbf, self.weight1) + self.bias1) # results.shape = (edge_num, channels)
     w = self.shifted_softplus(tf.linalg.matmul(results, self.weight2) + self.bias2) # results.shape = (edge_num, channels)
     # 2) continuous fileter convolution
     x = tfgnn.keras.layers.Readout(node_set_name = tfgnn.HIDDEN_STATE) # x.shape = (node_num, channels)
     f = tf.linalg.matmul(x, self.weight3) # results.shape = (node_num, channels)
-    f = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = f) # receiver_states.shape = (edge_num, channels)
+    f = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_value = f) # receiver_states.shape = (edge_num, channels)
     wf = w * f # wf.shape = (node_num, channels)
     conv = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, 'sum', wf) # conv.shape = (node_num, channels)
     y = self.shifted_softplus(tf.linalg.matmul(conv, self.weight4) + self.bias4) # y.shape = (node_num, channels)
@@ -44,7 +45,7 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     y = x + v
     return y
 
-def SchNet(channels = 200):
+def SchNet(channels = 256):
   inputs = tf.keras.Input(type_spec = graph_tensor_spec())
   results = inputs.merge_batch_to_components() # merge graphs of a batch to one graph as different components
   results = tfgnn.keras.layers.MapFeatures(
