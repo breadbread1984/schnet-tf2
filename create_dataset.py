@@ -127,7 +127,7 @@ def parse_function(serialized_example):
     serialized_example,
     validate = True)
   context_features = graph.context.get_features_dict()
-  labels = {context_features.pop(name) for name in prop_names}
+  labels = {name: context_features.pop(name) for name in prop_names}
   graph = graph.replace_features(context = context_features)
   return graph, labels
 
