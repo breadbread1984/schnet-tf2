@@ -20,8 +20,10 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     # NOTE: dense3 doesnt use bias, so no bias3
     self.weight4 = self.add_weight(name = 'weight4', shape = (self.channels, self.channels), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
     self.bias4 = self.add_weight(name = 'bias4', shape = (self.channels,), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
+    self.weight5 = self.add_weight(name = 'weight5', shape = (self.channels, self.channels), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
+    self.bias5 = self.add_weight(name = 'bias5', shape = (self.channels,), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
   def call(self, graph, edge_set_name):
-    # 1) get weight according to distances between sender and receiver
+    # 1) filternet
     receiver_positions = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_name = "position") # recevier_position.shape = (edge_num, 3)
     sender_positions = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.SOURCE, feature_name = "position") # sender_position.shape = (edge_num, 3)
     dists = tf.math.sqrt(tf.math.reduce_sum((receiver_positions - sender_positinos) ** 2, axis = -1, keepdims = True)) # dists.shape = (edge_num, 1)
@@ -30,12 +32,17 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
     results = self.shifted_softplus(tf.linalg.matmul(rbf, self.weight1) + self.bias1) # results.shape = (edge_num, channels)
     w = self.shifted_softplus(tf.linalg.matmul(results, self.weight2) + self.bias2) # results.shape = (edge_num, channels)
-    # 2) graph convolution
-    receiver_states = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_name = tfgnn.HIDDEN_STATE) # receiver_states.shape = (edge_num, channels)
-    results = tf.linalg.matmul(receiver_states, self.weight3) # results.shape = (edge_num, channels)
+    # 2) continuous fileter convolution
+    x = tfgnn.keras.layers.Readout(node_set_name = tfgnn.HIDDEN_STATE) # x.shape = (node_num, channels)
+    f = tf.linalg.matmul(x, self.weight3) # results.shape = (node_num, channels)
+    f = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_value = f) # receiver_states.shape = (edge_num, channels)
     wf = w * f # wf.shape = (node_num, channels)
     conv = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, 'sum', wf) # conv.shape = (node_num, channels)
-    # TODO
+    y = self.shifted_softplus(tf.linalg.matmul(conv, self.weight4) + self.bias4) # y.shape = (node_num, channels)
+    # 3) dense
+    v = tf.linalg.matmul(y, self.weight5) + self.bias5 # v.shape = (node_num, channels)
+    y = x + v
+    return y
 
 def SchNet(channels = 200):
   inputs = tf.keras.Input(type_spec = graph_tensor_spec())
