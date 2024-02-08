@@ -2,10 +2,13 @@
 
 from absl import flags, app
 from shutil import rmtree
-from os import mkdir
+from os import mkdir, listdir
 from os.path import join, exists
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from ase.io.extxyz import read_xyz
+from ase.neighborlist import NeighborList
+from ase.units import Hartree, eV, Bohr, Ang
 import numpy as np
 import tensorflow as tf
 import tensorflow_gnn as tfgnn
@@ -13,29 +16,51 @@ import tensorflow_gnn as tfgnn
 FLAGS = flags.FLAGS
 
 def add_options():
-  flags.DEFINE_string('input_csv', default = None, help = 'path to polymer dataset csv')
+  flags.DEFINE_string('input_dir', default = None, help = 'path to qm9 directory')
   flags.DEFINE_string('output_dir', default = 'dataset', help = 'path to output directory')
 
-def smiles_to_sample(smiles, label, cutoff = 20, gap = 0.1):
+prop_names = ['rcA', 'rcB', 'rcC', 'mu', 'alpha', 'homo', 'lumo',
+              'gap', 'r2', 'zpve', 'energy_U0', 'energy_U', 'enthalpy_H',
+              'free_G', 'Cv']
+conversions = [1., 1., 1., 1., Bohr ** 3 / Ang ** 3,
+               Hartree / eV, Hartree / eV, Hartree / eV,
+               Bohr ** 2 / Ang ** 2, Hartree / eV,
+               Hartree / eV, Hartree / eV, Hartree / eV,
+               Hartree / eV, 1.]
+
+def load_sample(xyz_path, cutoff = 20., gap = 0.1):
+  properties = dict()
+  # 1) get properties
+  with open(xyz_path, 'r') as f:
+    lines = f.readlines()
+    l = lines[1].split()[2:]
+    for pn, p, c in zip(prop_names, l, conversions):
+      properties[pn] = float(p) * c
+  # 2) get structure
+  with open(xyz_path, 'r') as f:
+    ats = list(read_xyz(f, 0))[0]
+    nbhlist = NeighborList(cutoffs = [cutoff * 0.5] * len(ats), bothways = True, self_interaction = False)
+    nbhlist.update(ats)
   nodes = list()
   positions = list()
   edges = list()
-  molecule = Chem.MolFromSmiles(smiles)
-  atom_num = len(molecule.GetAtoms())
-  AllChem.EmbedMolecule(molecule)
-  AllChem.UFFOptimizeMolecule(molecule)
-  for atom in molecule.GetAtoms():
-    idx = atom.GetIdx()
-    position = molecule.GetConformer().GetAtomPosition(idx)
-    nodes.append(atom.GetAtomicNum())
-    positions.append((position.x, position.y, position.z))
-    for neighbor_atom in atom.GetNeighbors():
-      neighbor_idx = neighbor_atom.GetIdx()
-      bond = molecule.GetBondBetweenAtoms(idx, neighbor_idx)
-      edges.append((idx, neighbor_idx, bond.GetBondType()))
+  offsets = list()
+  cell = ats.cell
+  for i in range(len(ats)):
+    nodes.append(ats.arrays['numbers'][i])
+    positions.append(ats.arrays['positions'][i])
+    ind, off = nbhlist.get_neighbors(i)
+    sidx = np.argsort(ind)
+    ind = ind[sidx]
+    off = np.dot(off[sidx], cell) # off.shape = (neighbor_num, 3)
+    for j, o in zip(ind, off):
+      edges.append((i, j))
+      offsets.append(off)
   nodes = tf.stack(nodes, axis = 0) # nodes.shape = (node_num,)
   positions = tf.stack(positions, axis = 0) # pos.shape = (node_num, 3)
-  edges = tf.stack(edges, axis = 0) # edges.shape = (edge_num, 3)
+  edges = tf.stack(edges, axis = 0) # edges.shape = (edge_num, 2)
+  offsets = tf.stack(offsets, axis = 0) # offsets.shape = (edge_num, 3)
+  # 3) create graph sample
   graph = tfgnn.GraphTensor.from_pieces(
     node_sets = {
       "atom": tfgnn.NodeSet.from_fields(
@@ -54,14 +79,14 @@ def smiles_to_sample(smiles, label, cutoff = 20, gap = 0.1):
           target = ("atom", edges[:,1])
         ),
         features = {
-          tfgnn.HIDDEN_STATE: tf.one_hot(edges[:,2], 22),
+          'offset': offsets,
           'rbf': tf.zeros((edges.shape[0], int(tf.math.ceil(cutoff / gap))))
         }
       )
     },
     context = tfgnn.Context.from_fields(
       features = {
-        "label": tf.constant([label,], dtype = tf.float32)
+        name: tf.constant([properties[name],], dtype = tf.float32) for name in prop_names
       }
     )
   )
@@ -69,30 +94,30 @@ def smiles_to_sample(smiles, label, cutoff = 20, gap = 0.1):
 
 def graph_tensor_spec(cutoff = 20, gap = 0.1):
   spec = tfgnn.GraphTensorSpec.from_piece_specs(
-      node_sets_spec = {
-        "atom": tfgnn.NodeSetSpec.from_field_specs(
-          features_spec = {
-            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 118), tf.float32),
-            "position": tf.TensorSpec((None, 3), tf.float32)
-          },
-          sizes_spec = tf.TensorSpec((1,), tf.int32)
-        )
-      },
-      edge_sets_spec = {
-        "bond": tfgnn.EdgeSetSpec.from_field_specs(
-          features_spec = {
-            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 22), tf.float32),
-            'rbf': tf.TensorSpec((None, int(tf.math.ceil(cutoff / gap))), dtype = tf.float32)
-          },
-          sizes_spec = tf.TensorSpec((1,), tf.int32),
-          adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
-        )
-      },
-      context_spec = tfgnn.ContextSpec.from_field_specs(
+    node_sets_spec = {
+      "atom": tfgnn.NodeSetSpec.from_field_specs(
         features_spec = {
-          'label': tf.TensorSpec(shape = (1,), dtype = tf.float32)
-        }
+          tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 118), tf.float32),
+          "position": tf.TensorSpec((None, 3), tf.float32)
+        },
+        sizes_spec = tf.TensorSpec((1,), tf.int32)
       )
+    },
+    edge_sets_spec = {
+      "bond": tfgnn.EdgeSetSpec.from_field_specs(
+        features_spec = {
+          'offset': tf.TensorSpec((None, 3), tf.float32),
+          'rbf': tf.TensorSpec((None, int(tf.math.ceil(cutoff / gap))), dtype = tf.float32)
+        },
+        sizes_spec = tf.TensorSpec((1,), tf.int32),
+        adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
+      )
+    },
+    context_spec = tfgnn.ContextSpec.from_field_specs(
+      features_spec = {
+        name: tf.TensorSpec(shape = (1,), dtype = tf.float32) for name in prop_names
+      }
+    )
   )
   return spec
 
@@ -102,14 +127,14 @@ def parse_function(serialized_example):
     serialized_example,
     validate = True)
   context_features = graph.context.get_features_dict()
-  label = context_features.pop('label')
+  labels = {context_features.pop(name) for name in prop_names}
   graph = graph.replace_features(context = context_features)
-  return graph, label
+  return graph, labels
 
 def generate_dataset(samples, tfrecord_file):
   writer = tf.io.TFRecordWriter(tfrecord_file)
-  for line, (smiles, label) in enumerate(samples):
-    graph = smiles_to_sample(smiles, float(label))
+  for line, xyz_path in enumerate(samples):
+    graph = load_sample(xyz_path)
     example = tfgnn.write_example(graph)
     writer.write(example.SerializeToString())
   writer.close()
@@ -118,11 +143,8 @@ def main(unused_argv):
   if exists(FLAGS.output_dir): rmtree(FLAGS.output_dir)
   mkdir(FLAGS.output_dir)
   samples = list()
-  with open(FLAGS.input_csv, 'r') as f:
-    for line, row in enumerate(f.readlines()):
-      if line == 0: continue
-      smiles, label = row.split(',')
-      samples.append((smiles, label))
+  for f in listdir(FLAGS.input_dir):
+    samples.append(join(FLAGS.input_dir, f))
   is_train = np.random.multinomial(1, (9/10,1/10), size = len(samples))[:,0].astype(np.bool_)
   samples = np.array(samples)
   trainset = samples[is_train].tolist()
