@@ -4,7 +4,7 @@ from os.path import join, exists
 from absl import flags, app
 import tensorflow as tf
 import tensorflow_gnn as tfgnn
-from create_datasets import parse_function
+from create_datasets import parse_function, prop_names
 from models import SchNet
 
 FLAGS = flags.FLAGS
@@ -22,8 +22,8 @@ def main(unused_argv):
   trainset = tf.data.TFRecordDataset(join(FLAGS.dataset, 'trainset.tfrecord')).map(parse_function).prefetch(FLAGS.batch).shuffle(FLAGS.batch).batch(FLAGS.batch)
   valset = tf.data.TFRecordDataset(join(FLAGS.dataset, 'testset.tfrecord')).map(parse_function).prefetch(FLAGS.batch).shuffle(FLAGS.batch).batch(FLAGS.batch)
   model = SchNet()
-  loss = [tf.keras.losses.MeanAbsoluteError()]
-  metrics = [tf.keras.metrics.MeanAbsoluteError()]
+  loss = {name: tf.keras.losses.MeanAbsoluteError() for name in prop_names}
+  metrics = {name: tf.keras.metrics.MeanAbsoluteError() for name in prop_names}
   optimizer = tf.keras.optimizers.Adam(tf.keras.optimizers.schedules.CosineDecayRestarts(FLAGS.lr, first_decay_steps = FLAGS.decay_steps))
   model.compile(optimizer = optimizer, loss = loss, metrics = metrics)
   if exists(FLAGS.ckpt): model.load_weights(join(FLAGS.ckpt, 'ckpt', 'variables', 'variables'))
