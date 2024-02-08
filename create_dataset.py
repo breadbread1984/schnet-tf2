@@ -36,7 +36,7 @@ def smiles_to_sample(smiles, label):
   nodes = tf.stack(nodes, axis = 0) # nodes.shape = (node_num,)
   positions = tf.stack(positions, axis = 0) # pos.shape = (node_num, 3)
   edges = tf.stack(edges, axis = 0) # edges.shape = (edge_num, 3)
-  graph = tfgnn.GraphTensor.from_piece(
+  graph = tfgnn.GraphTensor.from_pieces(
     node_sets = {
       "atom": tfgnn.NodeSet.from_fields(
         sizes = tf.constant([nodes.shape[0]]),
@@ -80,7 +80,8 @@ def graph_tensor_spec():
       edge_sets_spec = {
         "bond": tfgnn.EdgeSetSpec.from_field_specs(
           features_spec = {
-            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 22), tf.float32)
+            tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 22), tf.float32),
+            'rbf': tf.TensorSpec((None, None), dtype = tf.float32)
           },
           sizes_spec = tf.TensorSpec((1,), tf.int32),
           adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
