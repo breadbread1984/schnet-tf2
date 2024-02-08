@@ -16,6 +16,10 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     self.bias1 = self.add_weight(name = 'bias1', shape = (self.channels,), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
     self.weight2 = self.add_weight(name = 'weight2', shape = (self.channels, self.channels), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
     self.bias2 = self.add_weight(name = 'bias2', shape = (self.channels,), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
+    self.weight3 = self.add_weight(name = 'weight3', shape = (self.channels, self.channels), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
+    # NOTE: dense3 doesnt use bias, so no bias3
+    self.weight4 = self.add_weight(name = 'weight4', shape = (self.channels, self.channels), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
+    self.bias4 = self.add_weight(name = 'bias4', shape = (self.channels,), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
   def call(self, graph, edge_set_name):
     # 1) get weight according to distances between sender and receiver
     receiver_positions = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_name = "position") # recevier_position.shape = (edge_num, 3)
@@ -25,11 +29,12 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     dists = dists - centers # dists.shape = (edge_num, center_num)
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
     results = self.shifted_softplus(tf.linalg.matmul(rbf, self.weight1) + self.bias1) # results.shape = (edge_num, channels)
-    results = self.shifted_softplus(tf.linalg.matmul(results, self.weight2) + self.bias2) # results.shape = (edge_num, channels)
-    w = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, 'sum', results) # w.shape = (node_num, channels)
+    w = self.shifted_softplus(tf.linalg.matmul(results, self.weight2) + self.bias2) # results.shape = (edge_num, channels)
     # 2) graph convolution
     receiver_states = tfgnn.broadcast_node_to_edges(graph, edge_set_name, tfgnn.TARGET, feature_name = tfgnn.HIDDEN_STATE) # receiver_states.shape = (edge_num, channels)
-    
+    results = tf.linalg.matmul(receiver_states, self.weight3) # results.shape = (edge_num, channels)
+    wf = w * f # wf.shape = (node_num, channels)
+    conv = tfgnn.pool_edges_to_node(graph, edge_set_name, tfgnn.TARGET, 'sum', wf) # conv.shape = (node_num, channels)
     # TODO
 
 def SchNet(channels = 200):
