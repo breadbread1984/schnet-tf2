@@ -54,7 +54,7 @@ def smiles_to_sample(smiles, label, cutoff = 20, gap = 0.1):
         ),
         features = {
           tfgnn.HIDDEN_STATE: tf.one_hot(edges[:,2], 22),
-          'rbf': tf.zeros((edges.shape[0], int(tf.math.ceil(cutoff / gap)))
+          'rbf': tf.zeros((edges.shape[0], int(tf.math.ceil(cutoff / gap))))
         }
       )
     },
