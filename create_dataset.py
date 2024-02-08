@@ -134,7 +134,14 @@ def parse_function(serialized_example):
 def generate_dataset(samples, tfrecord_file):
   writer = tf.io.TFRecordWriter(tfrecord_file)
   for line, xyz_path in enumerate(samples):
-    graph = load_sample(xyz_path)
+    # convert file content
+    with open(xyz_path, 'r') as f:
+      lines = f.readlines()
+      with open('tmp.xyz', 'w') as fout:
+        for line in lines:
+          fout.write(line.replace('*^', 'e'))
+    # write to tfrecord
+    graph = load_sample('tmp.xyz')
     example = tfgnn.write_example(graph)
     writer.write(example.SerializeToString())
   writer.close()
