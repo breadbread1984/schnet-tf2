@@ -49,6 +49,7 @@ def smiles_to_sample(smiles, label, cutoff = 20, gap = 0.1):
     edge_sets = {
       "bond": tfgnn.EdgeSet.from_fields(
         sizes = tf.constant([edges.shape[0]]),
+        adjacency = tfgnn.Adjacency.from_indices(
           source = ("atom", edges[:,0]),
           target = ("atom", edges[:,1])
         ),
