@@ -82,7 +82,7 @@ def graph_tensor_spec(cutoff = 20, gap = 0.1):
         "bond": tfgnn.EdgeSetSpec.from_field_specs(
           features_spec = {
             tfgnn.HIDDEN_STATE: tf.TensorSpec((None, 22), tf.float32),
-            'rbf': tf.TensorSpec((None, int(tf.math.ceil(cutoff / gap)), dtype = tf.float32)
+            'rbf': tf.TensorSpec((None, int(tf.math.ceil(cutoff / gap))), dtype = tf.float32)
           },
           sizes_spec = tf.TensorSpec((1,), tf.int32),
           adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
