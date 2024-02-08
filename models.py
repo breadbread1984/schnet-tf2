@@ -19,6 +19,14 @@ class FilterNet(tf.keras.layers.Layer):
     dists = dists - centers # dists.shape = (edge_num, center_num)
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
     return rbf
+  def get_config(self):
+    config = super(FilterNet, self).get_config()
+    config['cutoff'] = self.cutoff
+    config['gap'] = self.gap
+    return config
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
 class ContinuousFilterConvolution(tf.keras.layers.Layer):
   def __init__(self, units, *, receiver_tag, **kwargs):
@@ -52,6 +60,15 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     v = tf.linalg.matmul(y, self.weight5) + self.bias5 # v.shape = (node_num, channels)
     y = x + v
     return y
+  def get_config(self):
+    config = super(ContinuousFilterConvolution, self).get_config()
+    config['channels'] = self.channels
+    config['cutoff'] = self.cutoff
+    config['gap'] = self.gap
+    return config
+  @classmethod
+  def from_config(cls, config):
+    return cls(**config)
 
 def SchNet(channels = 256, layer_num = 4):
   graph = tf.keras.Input(type_spec = graph_tensor_spec())
