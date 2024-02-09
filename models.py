@@ -83,7 +83,7 @@ def SchNet(channels = 256, layer_num = 4):
         "rbf": FilterNet()
       },
       next_state = tfgnn.keras.layers.NextStateFromConcat(
-        transformation = tf.keras.Identity()
+        transformation = tf.keras.layers.Identity()
       )
     )
   )
