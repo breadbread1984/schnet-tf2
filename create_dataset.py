@@ -4,6 +4,7 @@ from absl import flags, app
 from shutil import rmtree
 from os import mkdir, listdir
 from os.path import join, exists, splitext, isdir
+from math import ceil
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from ase.io.extxyz import read_xyz
@@ -80,7 +81,7 @@ def load_sample(xyz_path, cutoff = 20., gap = 0.1):
         ),
         features = {
           'offset': offsets,
-          'rbf': tf.zeros((edges.shape[0], int(tf.math.ceil(cutoff / gap))))
+          'rbf': tf.zeros((edges.shape[0], int(ceil(cutoff / gap))))
         }
       )
     },
@@ -107,7 +108,7 @@ def graph_tensor_spec(cutoff = 20, gap = 0.1):
       "bond": tfgnn.EdgeSetSpec.from_field_specs(
         features_spec = {
           'offset': tf.TensorSpec((None, 3), tf.float32),
-          'rbf': tf.TensorSpec((None, int(tf.math.ceil(cutoff / gap))), dtype = tf.float32)
+          'rbf': tf.TensorSpec((None, int(ceil(cutoff / gap))), dtype = tf.float32)
         },
         sizes_spec = tf.TensorSpec((1,), tf.int32),
         adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
