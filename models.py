@@ -7,7 +7,7 @@ from create_dataset import graph_tensor_spec, prop_names
 shifted_softplus = lambda x: tf.where(x < 14., tf.math.softplus(tf.where(x < 14., x, tf.zeros_like(x))), x) - tf.math.log(2.)
 
 class FilterNet(tf.keras.layers.Layer):
-  def __init__(self, units, *, receiver_tag, **kwargs):
+  def __init__(self, *, receiver_tag, **kwargs):
     self.cutoff = kwargs.get('cutoff', 20.)
     self.gap = kwargs.get('gap', 0.1)
   def call(self, graph, edge_set_name):
