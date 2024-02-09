@@ -3,7 +3,7 @@
 from absl import flags, app
 from shutil import rmtree
 from os import mkdir, listdir
-from os.path import join, exists
+from os.path import join, exists, splitext, isdir
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from ase.io.extxyz import read_xyz
@@ -151,6 +151,8 @@ def main(unused_argv):
   mkdir(FLAGS.output_dir)
   samples = list()
   for f in listdir(FLAGS.input_dir):
+    stem, ext = splitext(f)
+    if ext != '.xyz' or not isdir(join(FLAGS.input_dir, f)): continue
     samples.append(join(FLAGS.input_dir, f))
   is_train = np.random.multinomial(1, (9/10,1/10), size = len(samples))[:,0].astype(np.bool_)
   samples = np.array(samples)
