@@ -152,7 +152,7 @@ def main(unused_argv):
   samples = list()
   for f in listdir(FLAGS.input_dir):
     stem, ext = splitext(f)
-    if ext != '.xyz' or not isdir(join(FLAGS.input_dir, f)): continue
+    if ext != '.xyz' or isdir(join(FLAGS.input_dir, f)): continue
     samples.append(join(FLAGS.input_dir, f))
   is_train = np.random.multinomial(1, (9/10,1/10), size = len(samples))[:,0].astype(np.bool_)
   samples = np.array(samples)
