@@ -4,7 +4,7 @@ from os.path import join, exists
 from absl import flags, app
 import tensorflow as tf
 import tensorflow_gnn as tfgnn
-from create_datasets import parse_function, prop_names
+from create_dataset import parse_function, prop_names
 from models import SchNet
 
 FLAGS = flags.FLAGS
