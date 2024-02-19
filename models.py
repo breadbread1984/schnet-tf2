@@ -78,9 +78,9 @@ class UpdateNodeHidden(tf.keras.layers.Layer):
   def __init__():
     super(UpdateNodeHidden, self).__init__()
   def call(self, inputs):
-    node_features, edge_features, context_features = inputs
+    node_features, incident_node_features, context_features = inputs
     positions = node_features
-    hidden = edge_features
+    hidden = incident_node_features
     return {tfgnn.HIDDEN_STATE: hidden, 'position': position}
 
 def SchNet(channels = 256, layer_num = 4):
