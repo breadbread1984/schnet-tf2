@@ -75,7 +75,7 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     return cls(**config)
 
 class UpdateNodeHidden(tf.keras.layers.Layer):
-  def __init__():
+  def __init__(self,):
     super(UpdateNodeHidden, self).__init__()
   def call(self, inputs):
     node_features, incident_node_features, context_features = inputs
