@@ -11,16 +11,17 @@ class FilterNet(tf.keras.layers.Layer):
     self.cutoff = kwargs.get('cutoff', 20.)
     self.gap = kwargs.get('gap', 0.1)
   def call(self, inputs):
+    edge_features, node_features, context_features = inputs
     # 1) filternet
-    sender_positions = inputs[tfgnn.SOURCE] # sender_position.shape = (edge_num, 3)
-    receiver_positions = inputs[tfgnn.TARGET] # receiver_positions.shape = (edge_num, 3)
+    sender_positions = node_features[tfgnn.SOURCE] # sender_position.shape = (edge_num, 3)
+    receiver_positions = node_features[tfgnn.TARGET] # receiver_positions.shape = (edge_num, 3)
     # 1) filternet
-    offsets = tfgnn.keras.layers.Readout(edge_set_name = 'bond', feature_name = 'offset')(graph) # offsets.shape = (edge_num, 3)
+    offsets = edge_features # offsets.shape = (edge_num, 3)
     dists = tf.math.sqrt(tf.math.reduce_sum((sender_positinos - (receiver_positions + offsets)) ** 2, axis = -1, keepdims = True)) # dists.shape = (edge_num, 1)
     centers = tf.expand_dims(tf.linspace(0., self.cutoff, int(tf.math.ceil(self.cutoff / self.gap))), axis = 0) # centers.shape = (1, center_num)
     dists = dists - centers # dists.shape = (edge_num, center_num)
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
-    return rbf
+    return {'offset': offsets, 'rbf': rbf}
   def get_config(self):
     config = super(FilterNet, self).get_config()
     config['cutoff'] = self.cutoff
@@ -77,15 +78,14 @@ def SchNet(channels = 256, layer_num = 4):
   graph = graph.merge_batch_to_components() # merge graphs of a batch to one graph as different components
   graph = tfgnn.keras.layers.MapFeatures(
     node_sets_fn = lambda node_set, *, node_set_name: tf.keras.layers.Dense(channels)(node_set[tfgnn.HIDDEN_STATE]))(graph)
-  # update context
+  # update edge feature rbf once
   graph = tfgnn.keras.layers.GraphUpdate(
     edge_sets = {
       "bond": tfgnn.keras.layers.EdgeSetUpdate(
+        edge_input_feature = "offset",
         node_input_feature = "position",
-        node_input_tags = (tfgnn.SOURCE, tfgnn.TARGET),
-        next_state = tfgnn.keras.layers.NextStateFromConcat(
-          transformation = FilterNet()
-        )
+        node_input_tags = [tfgnn.SOURCE, tfgnn.TARGET],
+        next_state = FilterNet()
       )
     }
   )(graph)
