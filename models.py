@@ -22,7 +22,7 @@ class FilterNet(tf.keras.layers.Layer):
     centers = tf.expand_dims(tf.linspace(0., self.cutoff, int(tf.math.ceil(self.cutoff / self.gap))), axis = 0) # centers.shape = (1, center_num)
     dists = dists - centers # dists.shape = (edge_num, center_num)
     rbf = tf.math.exp(-(dists ** 2) / self.gap) # rbf.shape = (edge_num, center_num)
-    return {'offset': offsets, 'rbf': rbf}
+    return rbf
   def get_config(self):
     config = super(FilterNet, self).get_config()
     config['cutoff'] = self.cutoff
@@ -79,9 +79,7 @@ class UpdateNodeHidden(tf.keras.layers.Layer):
     super(UpdateNodeHidden, self).__init__()
   def call(self, inputs):
     node_features, incident_node_features, context_features = inputs
-    positions = node_features
-    hidden = incident_node_features
-    return {tfgnn.HIDDEN_STATE: hidden, 'position': position}
+    return incident_node_features
 
 def SchNet(channels = 256, layer_num = 4):
   graph = tf.keras.Input(type_spec = graph_tensor_spec())
@@ -104,7 +102,6 @@ def SchNet(channels = 256, layer_num = 4):
     graph = tfgnn.keras.layers.GraphUpdate(
       node_sets = {
         "atom": tfgnn.keras.layers.NodeSetUpdate(
-          node_input_feature = "position",
           edge_set_inputs = {
             "bond": ContinuousFilterConvolution(units = channels)
           },

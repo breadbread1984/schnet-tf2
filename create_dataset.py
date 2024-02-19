@@ -80,8 +80,8 @@ def load_sample(xyz_path, cutoff = 20., gap = 0.1):
           target = ("atom", edges[:,1])
         ),
         features = {
+          tfgnn.HIDDEN_STATE: tf.zeros((edges.shape[0], int(ceil(cutoff / gap)))), # rbf
           'offset': offsets,
-          'rbf': tf.zeros((edges.shape[0], int(ceil(cutoff / gap))))
         }
       )
     },
@@ -107,8 +107,8 @@ def graph_tensor_spec(cutoff = 20, gap = 0.1):
     edge_sets_spec = {
       "bond": tfgnn.EdgeSetSpec.from_field_specs(
         features_spec = {
+          tfgnn.HIDDEN_STATE: tf.TensorSpec((None, int(ceil(cutoff / gap))), dtype = tf.float32), # rbf
           'offset': tf.TensorSpec((None, 3), tf.float32),
-          'rbf': tf.TensorSpec((None, int(ceil(cutoff / gap))), dtype = tf.float32)
         },
         sizes_spec = tf.TensorSpec((1,), tf.int32),
         adjacency_spec = tfgnn.AdjacencySpec.from_incident_node_sets("atom", "atom")
