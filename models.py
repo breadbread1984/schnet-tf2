@@ -113,7 +113,7 @@ def SchNet(channels = 256, layer_num = 4):
         )
       }
     )(graph)
-  resutls = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(graph)
+  results = tfgnn.keras.layers.Pool(tag = tfgnn.CONTEXT, reduce_type = "mean", node_set_name = "atom")(graph)
   results = tf.keras.layers.Dense(channels // 2, activation = shifted_softplus)(results) # results.shape = (batch, channels // 2)
   results = tf.keras.layers.Dense(len(prop_names))(results) # results.shape = (batch, len(prop_names))
   results = tf.keras.layers.Lambda(lambda x, n: tf.split(x, n, axis = -1), arguments = {'n': len(prop_names)})(results)
