@@ -8,6 +8,7 @@ shifted_softplus = lambda x: tf.where(x < 14., tf.math.softplus(tf.where(x < 14.
 
 class FilterNet(tf.keras.layers.Layer):
   def __init__(self, **kwargs):
+    super(FilterNet, self).__init__()
     self.cutoff = kwargs.get('cutoff', 20.)
     self.gap = kwargs.get('gap', 0.1)
   def call(self, inputs):
@@ -33,7 +34,7 @@ class FilterNet(tf.keras.layers.Layer):
 
 class ContinuousFilterConvolution(tf.keras.layers.Layer):
   def __init__(self, units, **kwargs):
-    super().__init__(**kwargs)
+    super(ContinuousFilterConvolution, self).__init__(**kwargs)
     self.channels = units
     self.cutoff = kwargs.get('cutoff', 20.)
     self.gap = kwargs.get('gap', 0.1)
