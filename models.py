@@ -50,7 +50,7 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
     self.weight5 = self.add_weight(name = 'weight5', shape = (self.channels, self.channels), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
     self.bias5 = self.add_weight(name = 'bias5', shape = (self.channels,), initializer = tf.keras.initializers.GlorotUniform(), trainable = True)
   def call(self, graph, edge_set_name):
-    rbf = tfgnn.keras.layers.Readout(edge_set_name = edge_set_name, feature_name = 'rbf')(graph) # rbf.shape = (edge_num, center_num)
+    rbf = tfgnn.keras.layers.Readout(edge_set_name = edge_set_name, feature_name = tfgnn.HIDDEN_STATE)(graph) # rbf.shape = (edge_num, center_num)
     results = shifted_softplus(tf.linalg.matmul(rbf, self.weight1) + self.bias1) # results.shape = (edge_num, channels)
     w = shifted_softplus(tf.linalg.matmul(results, self.weight2) + self.bias2) # results.shape = (edge_num, channels)
     # 2) continuous fileter convolution
