@@ -104,10 +104,10 @@ def SchNet(channels = 256, layer_num = 4):
     graph = tfgnn.keras.layers.GraphUpdate(
       node_sets = {
         "atom": tfgnn.keras.layers.NodeSetUpdate(
+          node_input_feature = "position",
           edge_set_inputs = {
             "bond": ContinuousFilterConvolution(units = channels)
           },
-          node_input_feature = "position",
           next_state = UpdateNodeHidden()
         )
       }
