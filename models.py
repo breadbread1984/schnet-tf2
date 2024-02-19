@@ -73,6 +73,15 @@ class ContinuousFilterConvolution(tf.keras.layers.Layer):
   def from_config(cls, config):
     return cls(**config)
 
+class UpdateNodeHidden(tf.keras.layers.Layer):
+  def __init__():
+    pass
+  def call(self, inputs):
+    node_features, edge_features, context_features = inputs
+    positions = node_features
+    hidden = edge_features
+    return {tfgnn.HIDDEN_STATE: hidden, 'position': position}
+
 def SchNet(channels = 256, layer_num = 4):
   graph = tf.keras.Input(type_spec = graph_tensor_spec())
   graph = graph.merge_batch_to_components() # merge graphs of a batch to one graph as different components
@@ -97,9 +106,8 @@ def SchNet(channels = 256, layer_num = 4):
           edge_set_inputs = {
             "bond": ContinuousFilterConvolution(units = channels)
           },
-          next_state = tfgnn.keras.layers.NextStateFromConcat(
-            transformation = tf.keras.Identity()
-          )
+          node_input_feature = "position",
+          next_state = UpdateNodeHidden()
         )
       }
     )(graph)
