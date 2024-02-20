@@ -82,8 +82,8 @@ class UpdateNodeHidden(tf.keras.layers.Layer):
     return incident_node_features
 
 def SchNet(channels = 256, layer_num = 4):
-  graph = tf.keras.Input(type_spec = graph_tensor_spec())
-  graph = graph.merge_batch_to_components() # merge graphs of a batch to one graph as different components
+  inputs = tf.keras.Input(type_spec = graph_tensor_spec())
+  graph = inputs.merge_batch_to_components() # merge graphs of a batch to one graph as different components
   graph = tfgnn.keras.layers.MapFeatures(
     node_sets_fn = lambda node_set, *, node_set_name: {  
       tfgnn.HIDDEN_STATE: tf.keras.layers.Dense(channels)(node_set[tfgnn.HIDDEN_STATE]),
@@ -117,4 +117,4 @@ def SchNet(channels = 256, layer_num = 4):
   results = tf.keras.layers.Dense(channels // 2, activation = shifted_softplus)(results) # results.shape = (batch, channels // 2)
   results = tf.keras.layers.Dense(len(prop_names))(results) # results.shape = (batch, len(prop_names))
   results = tf.keras.layers.Lambda(lambda x, n: tf.split(x, n, axis = -1), arguments = {'n': len(prop_names)})(results)
-  return tf.keras.Model(inputs = graph, outputs = {k:v for k,v in zip(prop_names,results)})
+  return tf.keras.Model(inputs = inputs, outputs = {k:v for k,v in zip(prop_names,results)})
